@@ -66,12 +66,12 @@ def train_filter(args, dataset):
     for epoch in range(1, args.epochs + 1):
         train_loop(args, dataset, epoch, iekf, optimizer, args.seq_dim)
         save_iekf(args, iekf)
-        print("Amount of time spent for 1 epoch: {}s\n".format(int(time.time() - start_time)))
+        cprint("  Amount of time spent for 1 epoch: {}s\n".format(int(time.time() - start_time)))
         start_time = time.time()
 
 
 def prepare_filter(args, dataset):
-    iekf = TORCHIEKF()
+    iekf = TORCHIEKF(args.device)
 
     # set dataset parameter
     iekf.filter_parameters = args.parameter_class()
@@ -82,6 +82,8 @@ def prepare_filter(args, dataset):
     # load model
     if args.continue_training:
         iekf.load(args, dataset)
+    iekf.to(args.device)
+
     iekf.train()
     # init u_loc and u_std
     iekf.get_normalize_u(dataset)
@@ -89,15 +91,12 @@ def prepare_filter(args, dataset):
 
 
 def prepare_loss_data(args, dataset):
-
-
-
     file_delta_p = os.path.join(args.path_temp, 'delta_p.p')
     if os.path.isfile(file_delta_p):
         mondict = dataset.load(file_delta_p)
         dataset.list_rpe = mondict['list_rpe']
         dataset.list_rpe_validation = mondict['list_rpe_validation']
-        if set(dataset.datasets_train_filter.keys()) <= set(dataset.list_rpe.keys()): 
+        if set(dataset.datasets_train_filter.keys()) <= set(dataset.list_rpe.keys()):
             return
 
     # prepare delta_p_gt
@@ -120,7 +119,7 @@ def prepare_loss_data(args, dataset):
             ang_k = ang_gt[k]
             Rot_gt[k] = TORCHIEKF.from_rpy(ang_k[0], ang_k[1], ang_k[2]).double()
         list_rpe_validation[dataset_name] = compute_delta_p(Rot_gt[:Ns[1]], p_gt[:Ns[1]])
-    
+
     list_rpe_ = copy.deepcopy(list_rpe)
     dataset.list_rpe = {}
     for dataset_name, rpe in list_rpe_.items():
@@ -154,44 +153,43 @@ def train_loop(args, dataset, epoch, iekf, optimizer, seq_dim):
                                                                   iekf, seq_dim)
 
         loss = mini_batch_step(dataset, dataset_name, iekf,
-                               dataset.list_rpe[dataset_name], t, ang_gt, p_gt, v_gt, u, N0)
+                               dataset.list_rpe[dataset_name], t, ang_gt, p_gt, v_gt, u.to(args.device), N0)
 
         if loss is -1 or torch.isnan(loss):
-            cprint("{} loss is invalid".format(i), 'yellow')
+            cprint("  - {} loss is invalid".format(i), 'yellow')
             continue
         elif loss > max_loss:
-            cprint("{} loss is too high {:.5f}".format(i, loss), 'yellow')
+            cprint("  - {} loss is too high {:.5f}".format(i, loss), 'yellow')
             continue
         else:
             loss_train += loss
-            cprint("{} loss: {:.5f}".format(i, loss))
+            cprint("  - {} loss: {:.5f}".format(i, loss))
 
-    if loss_train == 0: 
-        return 
-    loss_train.backward()  # loss_train.cuda().backward()  
+    if loss_train == 0:
+        return
+    loss_train.backward()  # loss_train.cuda().backward()
     g_norm = torch.nn.utils.clip_grad_norm_(iekf.parameters(), max_grad_norm)
     if np.isnan(g_norm) or g_norm > 3*max_grad_norm:
-        cprint("gradient norm: {:.5f}".format(g_norm), 'yellow')
+        cprint("  - gradient norm: {:.5f}".format(g_norm), 'yellow')
         optimizer.zero_grad()
-
     else:
         optimizer.step()
         optimizer.zero_grad()
-        cprint("gradient norm: {:.5f}".format(g_norm))
-    print('Train Epoch: {:2d} \tLoss: {:.5f}'.format(epoch, loss_train))
+        cprint("  - gradient norm: {:.5f}".format(g_norm))
+    cprint('  Final Loss of Epoch {:2d} \tLoss: {:.5f}'.format(epoch, loss_train))
     return loss_train
 
 
 def save_iekf(args, iekf):
     file_name = os.path.join(args.path_temp, "iekfnets.p")
     torch.save(iekf.state_dict(), file_name)
-    print("The IEKF nets are saved in the file " + file_name)
+    print("  The IEKF nets are saved in the file " + file_name)
 
 
 def mini_batch_step(dataset, dataset_name, iekf, list_rpe, t, ang_gt, p_gt, v_gt, u, N0):
     iekf.set_Q()
     measurements_covs = iekf.forward_nets(u)
-    Rot, v, p, b_omega, b_acc, Rot_c_i, t_c_i = iekf.run(t, u,measurements_covs,
+    Rot, v, p, b_omega, b_acc, Rot_c_i, t_c_i = iekf.run(t, u, measurements_covs,
                                                             v_gt, p_gt, t.shape[0],
                                                             ang_gt[0])
     delta_p, delta_p_gt = precompute_lost(Rot, p, list_rpe, N0)
@@ -262,10 +260,10 @@ def precompute_lost(Rot, p, list_rpe, N0):
     delta_p_gt = delta_p_gt[idxs]
     idxs_end_bis = idxs_end[idxs]
     idxs_0_bis = idxs_0[idxs]
-    if len(idxs_0_bis) is 0: 
-        return None, None     
+    if len(idxs_0_bis) is 0:
+        return None, None
     else:
         delta_p = Rot_10_Hz[idxs_0_bis].transpose(-1, -2).matmul(
         (p_10_Hz[idxs_end_bis] - p_10_Hz[idxs_0_bis]).unsqueeze(-1)).squeeze()
         distance = delta_p_gt.norm(dim=1).unsqueeze(-1)
-        return delta_p.double() / distance.double(), delta_p_gt.double() / distance.double() 
+        return delta_p.double() / distance.double(), delta_p_gt.double() / distance.double()

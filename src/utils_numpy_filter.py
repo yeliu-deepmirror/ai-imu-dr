@@ -12,7 +12,8 @@ class NUMPYIEKF:
     Id6 = np.eye(6)
     IdP = np.eye(21)
 
-    def __init__(self, parameter_class=None):
+    def __init__(self, device, parameter_class=None):
+        self.device = device
 
         # variables to initialize with `filter_parameters`
         self.g = None

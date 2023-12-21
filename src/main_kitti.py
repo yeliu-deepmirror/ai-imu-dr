@@ -125,8 +125,8 @@ class KITTIDataset(BaseDataset):
 
 
 def test_filter(args, dataset):
-    iekf = IEKF()
-    torch_iekf = TORCHIEKF()
+    iekf = IEKF(args.device)
+    torch_iekf = TORCHIEKF(args.device)
 
     # put Kitti parameters
     iekf.filter_parameters = KITTIParameters()
@@ -167,6 +167,7 @@ class KITTIArgs():
         path_data_save = "../data"
         path_results = "../results"
         path_temp = "../temp"
+        device = "cpu"
 
         epochs = 400
         seq_dim = 6000
@@ -187,7 +188,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description="Training/Testing script parameters")
     parser.add_argument('--train_filter', default=False, action="store_true")
     parser.add_argument('--test_filter', default=True, action="store_true")
-    parser.add_argument('--results_filter', default=True, action="store_true")
+    parser.add_argument('--results_filter', default=False, action="store_true")
     opt, _ = parser.parse_known_args()
 
     args = KITTIArgs()
