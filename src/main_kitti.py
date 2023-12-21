@@ -137,6 +137,11 @@ def test_filter(args, dataset):
     torch_iekf.load(args, dataset)
     iekf.set_learned_covariance(torch_iekf)
 
+    # print the network structure
+    from torchsummary import summary
+    torch_iekf.mes_net.cov0_measurement = torch_iekf.cov0_measurement
+    summary(torch_iekf.mes_net, (6, 224), 100, "cpu")
+
     for i in range(0, len(dataset.datasets)):
         dataset_name = dataset.dataset_name(i)
         if dataset_name not in dataset.odometry_benchmark.keys():

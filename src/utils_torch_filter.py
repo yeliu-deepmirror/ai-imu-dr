@@ -61,11 +61,18 @@ class MesNet(torch.nn.Module):
             self.cov_lin[0].bias.data[:] /= 100
             self.cov_lin[0].weight.data[:] /= 100
 
-        def forward(self, u, iekf):
+        def forward_tmp(self, u, iekf):
             y_cov = self.cov_net(u).transpose(0, 2).squeeze()
             z_cov = self.cov_lin(y_cov)
             z_cov_net = self.beta_measurement.unsqueeze(0)*z_cov
             measurements_covs = (iekf.cov0_measurement.unsqueeze(0) * (10**z_cov_net))
+            return measurements_covs
+
+        def forward(self, u):
+            y_cov = self.cov_net(u).transpose(0, 2).squeeze()
+            z_cov = self.cov_lin(y_cov)
+            z_cov_net = self.beta_measurement.unsqueeze(0)*z_cov
+            measurements_covs = (self.cov0_measurement.unsqueeze(0) * (10**z_cov_net))
             return measurements_covs
 
 
@@ -424,7 +431,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
     def forward_nets(self, u):
         u_n = self.normalize_u(u).t().unsqueeze(0)
         u_n = u_n[:, :6]
-        measurements_covs = self.mes_net(u_n, self)
+        measurements_covs = self.mes_net.forward_tmp(u_n, self)
         return measurements_covs
 
     def normalize_u(self, u):
