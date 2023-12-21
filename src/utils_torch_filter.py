@@ -236,9 +236,8 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
     @staticmethod
     def state_and_cov_update(Rot, v, p, b_omega, b_acc, Rot_c_i, t_c_i, P, H, r, R):
         S = H.mm(P).mm(H.t()) + R
-        Kt, _ = torch.gesv(P.mm(H.t()).t(), S)
-        K = Kt.t()
-        dx = K.mv(r.view(-1))
+        K = P.mm(H.t()).mm(torch.inverse(S))
+        dx = K.mv(r.view(-1)) # mv: matrix-vector product
 
         dR, dxi = TORCHIEKF.sen3exp(dx[:9])
         dv = dxi[:, 0]
@@ -458,6 +457,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
 
     def load(self, args, dataset):
         path_iekf = os.path.join(args.path_temp, "iekfnets.p")
+        cprint("IEKF load from " + path_iekf, 'green')
         if os.path.isfile(path_iekf):
             mondict = torch.load(path_iekf)
             self.load_state_dict(mondict)

@@ -2,7 +2,9 @@
 
 _1.10%_ translational error on the [KITTI](http://www.cvlibs.net/datasets/kitti/eval_odometry.php) odometry sequences with __only__ an Inertial Measurement Unit.
 
-![Results on sequence 08](temp/08.gif)
+<div align="center">    
+<img src="assets/08.gif" width="50%"/>
+</div>
 
 ## Overview
 
@@ -10,26 +12,29 @@ In the context of intelligent vehicles, robust and accurate dead reckoning based
 
 This repo contains the code of our novel accurate method for dead reckoning of wheeled vehicles based only on an IMU. The key components of the method are the Kalman filter and the use of deep neural networks to dynamically adapt the noise parameters of the filter. Our dead reckoning inertial method based only on the IMU accurately estimates 3D position, velocity, orientation of the vehicle and self-calibrates the IMU biases. We achieve on the KITTI odometry dataset on average a 1.10% translational error and the algorithm competes with top-ranked methods which, by contrast, use LiDAR or stereo vision.
 
-![Structure of the approach](temp/structure.jpg)
+<div align="center">    
+<img src="assets/structure.jpg" width="70%"/>
+</div>
 
 The above figure illustrates the approach which consists of two main blocks summarized as follows:
 1. the filter integrates the inertial measurements with exploits zero lateral and vertical velocity as measurements with covariance matrix to refine its estimates, see the figure below;
 2. the noise parameter adapter determines in real-time the most suitable covariance noise matrix. This deep learning based adapter converts directly raw IMU signals into covariance matrices without requiring knowledge of any state estimate nor any other quantity.
 
-
-![Structure of the filter](temp/iekf.jpg)
+<div align="center">    
+<img src="assets/iekf.jpg" width="70%"/>
+</div>
 
 ## Code
 Our implementation is done in Python. We use [Pytorch](https://pytorch.org/) for the adapter block of the system. The code was tested under Python 3.5.
- 
+
 ### Installation & Prerequies
 1.  Install [pytorch](http://pytorch.org). We perform all training and testing on its development branch.
-    
+
 2.  Install the following required packages, `matplotlib`, `numpy`, `termcolor`, `scipy`, `navpy`, e.g. with the pip3 command
 ```
 pip3 install matplotlib numpy termcolor scipy navpy
 ```
-    
+
 4.  Clone this repo
 ```
 git clone https://github.com/mbrossar/ai-imu-dr.git
@@ -73,7 +78,7 @@ If you use this code in your research, please cite:
 ```
 @article{brossard2019aiimu,
   author = {Martin Brossard and Axel Barrau and Silv\`ere Bonnabel},
-  journal={IEEE Transactions on Intelligent Vehicles}, 
+  journal={IEEE Transactions on Intelligent Vehicles},
   title = {{AI-IMU Dead-Reckoning}},
   year = {2020}
 }
