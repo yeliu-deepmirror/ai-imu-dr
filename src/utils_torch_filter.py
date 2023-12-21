@@ -457,13 +457,13 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
 
     def load(self, args, dataset):
         path_iekf = os.path.join(args.path_temp, "iekfnets.p")
-        cprint("IEKF load from " + path_iekf, 'green')
+        cprint("  load IEKF from " + path_iekf, 'green')
         if os.path.isfile(path_iekf):
             mondict = torch.load(path_iekf)
             self.load_state_dict(mondict)
-            cprint("IEKF nets loaded", 'green')
+            cprint("  IEKF nets loaded", 'green')
         else:
-            cprint("IEKF nets NOT loaded", 'yellow')
+            cprint("  IEKF nets NOT loaded", 'yellow')
         self.get_normalize_u(dataset)
 
 
