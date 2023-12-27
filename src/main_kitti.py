@@ -165,6 +165,8 @@ def test_filter(args, dataset):
             'Rot_c_i': Rot_c_i, 't_c_i': t_c_i,
             'measurements_covs': measurements_covs,
             }
+        print("Rot_c_i", Rot_c_i[-1])
+        print("t_c_i", t_c_i[-1])
         dataset.dump(mondict, args.path_results, dataset_name + "_filter.p")
 
 
@@ -189,6 +191,18 @@ class KITTIArgs():
         parameter_class = KITTIParameters
 
 
+def print_dataset_info(dataset):
+    # check imu frequence
+    for i in range(0, len(dataset.datasets)):
+        dataset_name = dataset.dataset_name(i)
+        t, ang_gt, p_gt, v_gt, u = dataset.get_data(dataset_name)
+
+        fps_imu = u.shape[0] / (t[-1] - t[0])
+        cprint("  " + dataset_name + ", fps imu : " + str(fps_imu))
+
+    # x is the front direction
+
+
 if __name__ == '__main__':
     parser = ArgumentParser(description="Training/Testing script parameters")
     parser.add_argument('--train_filter', default=False, action="store_true")
@@ -198,6 +212,7 @@ if __name__ == '__main__':
 
     args = KITTIArgs()
     dataset = KITTIDataset(args)
+    print_dataset_info(dataset)
 
     if opt.train_filter:
         cprint("Run Train...", 'green')
