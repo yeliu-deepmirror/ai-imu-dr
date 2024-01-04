@@ -38,6 +38,46 @@ class InitProcessCovNet(torch.nn.Module):
             return beta
 
 
+class DmMesNet(torch.nn.Module):
+    def __init__(self, device):
+        super(DmMesNet, self).__init__()
+        self.device = device
+        self.beta_measurement = 3*torch.ones(2).double().to(self.device)
+        self.cov0_measurement = torch.Tensor([1.0, 1.0]).double().to(self.device)
+
+        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 32, 5),
+                       torch.nn.ReplicationPad1d(4),
+                       torch.nn.ReLU(),
+                       torch.nn.Dropout(p=0.5),
+                       torch.nn.Conv1d(32, 32, 5, dilation=3),
+                       torch.nn.ReplicationPad1d(4),
+                       torch.nn.ReLU(),
+                       torch.nn.Dropout(p=0.5),
+                       ).double()
+        "CNN for measurement covariance"
+        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(32, 2),
+                                              torch.nn.Tanh(),
+                                              ).double()
+        self.cov_lin[0].bias.data[:] /= 100
+        self.cov_lin[0].weight.data[:] /= 100
+
+    def forward(self, u):
+        y_cov = self.cov_net(u).transpose(0, 2).squeeze()
+        z_cov = self.cov_lin(y_cov)
+        z_cov_net = self.beta_measurement.unsqueeze(0)*z_cov
+        measurements_covs = (self.cov0_measurement.unsqueeze(0) * (10**z_cov_net))
+        return measurements_covs
+
+    def load(self, model_path):
+        cprint("  load IEKF from " + model_path, 'green')
+        if os.path.isfile(model_path):
+            mondict = torch.load(model_path)
+            self.load_state_dict(mondict)
+            cprint("  DmMesNet nets loaded", 'green')
+        else:
+            cprint("  DmMesNet nets NOT loaded", 'yellow')
+
+
 class MesNet(torch.nn.Module):
         def __init__(self, device):
             super(MesNet, self).__init__()

@@ -145,6 +145,26 @@ def prepare_loss_data(args, dataset):
     dataset.dump(mondict, file_delta_p)
 
 
+def train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer):
+    optimizer.zero_grad()
+
+    # compute loss
+    output = meanet.forward(trainning_data["input"])
+    loss_train = criterion(output, trainning_data["output"])
+    # cprint("  - loss_train: {:.5f}".format(loss_train))
+
+    if loss_train == 0:
+        return
+    loss_train.backward()  # loss_train.cuda().backward()
+
+    g_norm = torch.nn.utils.clip_grad_norm_(meanet.parameters(), max_grad_norm).cpu()
+    optimizer.step()
+    optimizer.zero_grad()
+    # cprint("  - gradient norm: {:.5f}".format(g_norm))
+    # cprint('  Final Loss of Epoch {:2d} \tLoss: {:.5f}'.format(epoch, loss_train))
+    return loss_train, g_norm
+
+
 def train_loop(args, dataset, epoch, iekf, optimizer, seq_dim):
     loss_train = 0
     optimizer.zero_grad()
@@ -205,6 +225,17 @@ def set_optimizer(iekf):
                            'weight_decay': weight_decay_initprocesscov_net}]
     for key, value in lr_mesnet.items():
         param_list.append({'params': getattr(iekf.mes_net, key).parameters(),
+                           'lr': value,
+                           'weight_decay': weight_decay_mesnet[key]
+                           })
+    optimizer = torch.optim.Adam(param_list)
+    return optimizer
+
+
+def set_mes_net_optimizer(mes_net):
+    param_list = []
+    for key, value in lr_mesnet.items():
+        param_list.append({'params': getattr(mes_net, key).parameters(),
                            'lr': value,
                            'weight_decay': weight_decay_mesnet[key]
                            })
