@@ -31,7 +31,7 @@ class TrainArgs():
     plot_path = "/ai-imu-dr/temp/dmmesnet_train.png"
 
     device = "cuda"
-    epochs = 500
+    epochs = 5000
     save_every_epoch = 20
     continue_training = True
 
@@ -95,9 +95,11 @@ if __name__ == '__main__':
     plt.figure(figsize=(20, 8))
     plt.subplot(1, 2, 1)
     plt.plot(losses)
+    plt.yscale('log')
     plt.title("train_loss")
     plt.subplot(1, 2, 2)
     plt.plot(g_norms)
+    plt.yscale('log')
     plt.title("graident norm")
     plt.savefig(args.plot_path)
 
