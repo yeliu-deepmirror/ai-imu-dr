@@ -9,9 +9,9 @@ from utils import prepare_data
 
 class InitProcessCovNet(torch.nn.Module):
 
-        def __init__(self):
+        def __init__(self, device):
             super(InitProcessCovNet, self).__init__()
-
+            self.device = device
             self.beta_process = 3*torch.ones(2).double()
             self.beta_initialization = 3*torch.ones(2).double()
 
@@ -28,20 +28,21 @@ class InitProcessCovNet(torch.nn.Module):
             return
 
         def init_cov(self, iekf):
-            alpha = self.factor_initial_covariance(torch.ones(1).double()).squeeze()
+            alpha = self.factor_initial_covariance(torch.ones(1).double().to(self.device)).squeeze()
             beta = 10**(self.tanh(alpha))
             return beta
 
         def init_processcov(self, iekf):
-            alpha = self.factor_process_covariance(torch.ones(1).double())
+            alpha = self.factor_process_covariance(torch.ones(1).double().to(self.device))
             beta = 10**(self.tanh(alpha))
             return beta
 
 
 class MesNet(torch.nn.Module):
-        def __init__(self):
+        def __init__(self, device):
             super(MesNet, self).__init__()
-            self.beta_measurement = 3*torch.ones(2).double()
+            self.device = device
+            self.beta_measurement = 3*torch.ones(2).double().to(self.device)
             self.tanh = torch.nn.Tanh()
 
             self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 32, 5),
@@ -60,11 +61,18 @@ class MesNet(torch.nn.Module):
             self.cov_lin[0].bias.data[:] /= 100
             self.cov_lin[0].weight.data[:] /= 100
 
-        def forward(self, u, iekf):
+        def forward_tmp(self, u, iekf):
             y_cov = self.cov_net(u).transpose(0, 2).squeeze()
             z_cov = self.cov_lin(y_cov)
             z_cov_net = self.beta_measurement.unsqueeze(0)*z_cov
             measurements_covs = (iekf.cov0_measurement.unsqueeze(0) * (10**z_cov_net))
+            return measurements_covs
+
+        def forward(self, u):
+            y_cov = self.cov_net(u).transpose(0, 2).squeeze()
+            z_cov = self.cov_lin(y_cov)
+            z_cov_net = self.beta_measurement.unsqueeze(0)*z_cov
+            measurements_covs = (self.cov0_measurement.unsqueeze(0) * (10**z_cov_net))
             return measurements_covs
 
 
@@ -75,15 +83,16 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
     Id6 = torch.eye(6).double()
     IdP = torch.eye(21).double()
 
-    def __init__(self, parameter_class=None):
+    def __init__(self, device, parameter_class=None):
         torch.nn.Module.__init__(self)
-        NUMPYIEKF.__init__(self, parameter_class=None)
+        NUMPYIEKF.__init__(self, device, parameter_class=None)
+        # self.device = device
 
         # mean and standard deviation of parameters for normalizing inputs
         self.u_loc = None
         self.u_std = None
-        self.initprocesscov_net = InitProcessCovNet()
-        self.mes_net = MesNet()
+        self.initprocesscov_net = InitProcessCovNet(device)
+        self.mes_net = MesNet(device)
         self.cov0_measurement = None
 
         # modified parameters
@@ -107,7 +116,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
                                            self.cov_Rot_c_i, self.cov_Rot_c_i, self.cov_Rot_c_i,
                                            self.cov_t_c_i, self.cov_t_c_i, self.cov_t_c_i])
                             ).double()
-        self.cov0_measurement = torch.Tensor([self.cov_lat, self.cov_up]).double()
+        self.cov0_measurement = torch.Tensor([self.cov_lat, self.cov_up]).double().to(self.device)
 
     def run(self, t, u,  measurements_covs, v_mes, p_mes, N, ang0):
 
@@ -134,7 +143,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
             return Rot, v, p, b_omega, b_acc, Rot_c_i, t_c_i, P
 
     def init_covariance(self):
-        beta = self.initprocesscov_net.init_cov(self)
+        beta = self.initprocesscov_net.init_cov(self).cpu()
         P = torch.zeros(self.P_dim, self.P_dim).double()
         P[:2, :2] = self.cov_Rot0*beta[0]*self.Id2  # no yaw error
         P[3:5, 3:5] = self.cov_v0*beta[1]*self.Id2
@@ -142,7 +151,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
         P[12:15, 12:15] = self.cov_b_acc0*beta[3]*self.Id3
         P[15:18, 15:18] = self.cov_Rot_c_i0*beta[4]*self.Id3
         P[18:21, 18:21] = self.cov_t_c_i0*beta[5]*self.Id3
-        return P
+        return P.to(self.device)
 
 
     def init_saved_state(self, dt, N, ang0):
@@ -236,9 +245,8 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
     @staticmethod
     def state_and_cov_update(Rot, v, p, b_omega, b_acc, Rot_c_i, t_c_i, P, H, r, R):
         S = H.mm(P).mm(H.t()) + R
-        Kt, _ = torch.gesv(P.mm(H.t()).t(), S)
-        K = Kt.t()
-        dx = K.mv(r.view(-1))
+        K = P.mm(H.t()).mm(torch.inverse(S))
+        dx = K.mv(r.view(-1)) # mv: matrix-vector product
 
         dR, dxi = TORCHIEKF.sen3exp(dx[:9])
         dv = dxi[:, 0]
@@ -423,15 +431,15 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
     def forward_nets(self, u):
         u_n = self.normalize_u(u).t().unsqueeze(0)
         u_n = u_n[:, :6]
-        measurements_covs = self.mes_net(u_n, self)
+        measurements_covs = self.mes_net.forward_tmp(u_n, self)
         return measurements_covs
 
     def normalize_u(self, u):
         return (u-self.u_loc)/self.u_std
 
     def get_normalize_u(self, dataset):
-        self.u_loc = dataset.normalize_factors['u_loc'].double()
-        self.u_std = dataset.normalize_factors['u_std'].double()
+        self.u_loc = dataset.normalize_factors['u_loc'].double().to(self.device)
+        self.u_std = dataset.normalize_factors['u_std'].double().to(self.device)
 
     def set_Q(self):
         """
@@ -447,7 +455,7 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
                                            self.cov_t_c_i, self.cov_t_c_i, self.cov_t_c_i])
                             ).double()
 
-        beta = self.initprocesscov_net.init_processcov(self)
+        beta = self.initprocesscov_net.init_processcov(self).cpu()
         self.Q = torch.zeros(self.Q.shape[0], self.Q.shape[0]).double()
         self.Q[:3, :3] = self.cov_omega*beta[0]*self.Id3
         self.Q[3:6, 3:6] = self.cov_acc*beta[1]*self.Id3
@@ -455,15 +463,17 @@ class TORCHIEKF(torch.nn.Module, NUMPYIEKF):
         self.Q[9:12, 9:12] = self.cov_b_acc*beta[3]*self.Id3
         self.Q[12:15, 12:15] = self.cov_Rot_c_i*beta[4]*self.Id3
         self.Q[15:18, 15:18] = self.cov_t_c_i*beta[5]*self.Id3
+        self.Q = self.Q.to(self.device)
 
     def load(self, args, dataset):
         path_iekf = os.path.join(args.path_temp, "iekfnets.p")
+        cprint("  load IEKF from " + path_iekf, 'green')
         if os.path.isfile(path_iekf):
             mondict = torch.load(path_iekf)
             self.load_state_dict(mondict)
-            cprint("IEKF nets loaded", 'green')
+            cprint("  IEKF nets loaded", 'green')
         else:
-            cprint("IEKF nets NOT loaded", 'yellow')
+            cprint("  IEKF nets NOT loaded", 'yellow')
         self.get_normalize_u(dataset)
 
 

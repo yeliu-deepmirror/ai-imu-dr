@@ -1,6 +1,5 @@
 data/
 results/
-temp/delta_p.p
-temp/iekfnets.p
-temp/normalize_factors.p
+temp/
 src/__pycache__
+.ai-imu-dr_bash_history
