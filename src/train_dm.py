@@ -31,7 +31,7 @@ class TrainArgs():
     plot_path = "/ai-imu-dr/temp/dmmesnet_train.png"
 
     device = "cuda"
-    epochs = 5000
+    epochs = 20000
     save_every_epoch = 20
     continue_training = True
 
@@ -70,6 +70,8 @@ def prepare_data(args):
 
     # make weights for each sample - by gyr - higher weight when car rotating
     rotation = np.absolute(imu_data_n[:, 0:3]).sum(axis=1)
+    rotation[rotation > 1.0] = 1.0
+    rotation[rotation < 0.1] = 0.1
     weights = np.array([rotation, rotation, rotation]).transpose()
     trainning_data["weights"] = torch.from_numpy(weights).to(args.device)
 
