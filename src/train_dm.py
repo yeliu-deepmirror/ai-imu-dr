@@ -62,11 +62,20 @@ def prepare_data(args):
     trainning_data["input"] = torch.from_numpy(imu_data_n).t().unsqueeze(0).to(args.device)
 
     # make output velocity cov maeaurement, y axis : front
-    velocity_xz = trainning_data[args.vel_data_name][:, [0,2]]
-    trainning_data["output"] = torch.from_numpy(velocity_xz).to(args.device)
+    velocity_xyz = trainning_data[args.vel_data_name]
+    velocity_front = np.absolute(velocity_xyz[:, 1])
+    # update front velocity (y axis) to delta front
+    velocity_xyz[1:, 1] = velocity_front[1:] - velocity_front[:-1]
+    trainning_data["output"] = torch.from_numpy(np.absolute(velocity_xyz)).to(args.device)
+
+    # make weights for each sample - by gyr - higher weight when car rotating
+    rotation = np.absolute(imu_data_n[:, 0:3]).sum(axis=1)
+    weights = np.array([rotation, rotation, rotation]).transpose()
+    trainning_data["weights"] = torch.from_numpy(weights).to(args.device)
 
     print(" input shape", trainning_data["input"].shape)
     print(" output shape", trainning_data["output"].shape)
+    print(" weights shape", trainning_data["weights"].shape)
     return trainning_data
 
 

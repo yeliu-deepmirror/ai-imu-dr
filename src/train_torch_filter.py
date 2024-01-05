@@ -12,6 +12,7 @@ max_loss = 2e1
 max_grad_norm = 1e0
 min_lr = 1e-5
 criterion = torch.nn.MSELoss(reduction="sum")
+criterion_l1 = torch.nn.L1Loss(reduction="none")
 lr_initprocesscov_net = 1e-4
 weight_decay_initprocesscov_net = 0e-8
 lr_mesnet = {'cov_net': 1e-4,
@@ -150,7 +151,8 @@ def train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer):
 
     # compute loss
     output = meanet.forward(trainning_data["input"])
-    loss_train = criterion(output, trainning_data["output"])
+    loss_train_tensor = criterion_l1(output, trainning_data["output"]) * trainning_data["weights"]
+    loss_train = loss_train_tensor.sum()
     # cprint("  - loss_train: {:.5f}".format(loss_train))
 
     if loss_train == 0:
