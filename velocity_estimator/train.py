@@ -8,8 +8,7 @@ import pickle
 import torch
 import matplotlib.pyplot as plt
 from termcolor import cprint
-from utils_torch_filter import DmMesNet
-from utils import prepare_data
+from model import DmVelNet
 from train_torch_filter import set_mes_net_optimizer, train_mes_net_loop
 from argparse import ArgumentParser, Namespace
 
@@ -22,13 +21,13 @@ class TrainArgs():
     imu_data_name = "gyr_acc"
     vel_data_name = "car_vel"
 
-    model_path = "/ai-imu-dr/temp/dmmesnet.p"
-    plot_path = "/ai-imu-dr/temp/dmmesnet_train.png"
+    model_path = "/ai-imu-dr/temp/dmvelnet.p"
+    plot_path = "/ai-imu-dr/temp/dmvelnet_train.png"
 
     device = "cuda"
     epochs = 20000
     save_every_epoch = 20
-    continue_training = True
+    continue_training = False
 
     # for normalization of imu data
     imu_mean = np.array([0, 0, 0, 0, 0, 9.81], dtype=np.float64)
@@ -36,7 +35,7 @@ class TrainArgs():
 
 
 def prepare_measurement_net(args):
-    torch_meanet = DmMesNet(args.device)
+    torch_meanet = DmVelNet(args.device)
     if args.continue_training:
         torch_meanet.load(args.model_path)
     if args.device == "cuda":
@@ -46,7 +45,7 @@ def prepare_measurement_net(args):
 
 def save_measurement_net(args, meanet):
     torch.save(meanet.state_dict(), args.model_path)
-    print("  The DmMesNet nets are saved in the file " + args.model_path)
+    print("  The DmVelNet nets are saved in the file " + args.model_path)
 
 
 def prepare_data(args):
@@ -54,21 +53,15 @@ def prepare_data(args):
 
     # normalize imu data
     imu_data_n = ((trainning_data[args.imu_data_name]-args.imu_mean)/args.imu_std)
-    trainning_data["input"] = torch.from_numpy(imu_data_n).t().unsqueeze(0).to(args.device)
+    trainning_data["input"] = torch.from_numpy(imu_data_n[1:]).t().unsqueeze(0).to(args.device)
 
     # make output velocity cov maeaurement, y axis : front
     velocity_xyz = trainning_data[args.vel_data_name]
-    velocity_front = np.absolute(velocity_xyz[:, 1])
-    # update front velocity (y axis) to delta front
-    velocity_xyz[1:, 1] = velocity_front[1:] - velocity_front[:-1]
-    trainning_data["output"] = torch.from_numpy(np.absolute(velocity_xyz)).to(args.device)
+    velocity_delta = velocity_xyz[1:, :] - velocity_xyz[:-1, :]
+    trainning_data["output"] = torch.from_numpy(velocity_delta).to(args.device)
 
-    # make weights for each sample - by gyr - higher weight when car rotating
-    rotation = np.absolute(imu_data_n[:, 0:3]).sum(axis=1)
-    rotation[rotation > 1.0] = 1.0
-    rotation[rotation < 0.1] = 0.1
-    weights = np.array([rotation, rotation, rotation]).transpose()
-    trainning_data["weights"] = torch.from_numpy(weights).to(args.device)
+    # make weights for each sample
+    trainning_data["weights"] = torch.ones_like(trainning_data["output"]).to(args.device)
 
     print(" input shape", trainning_data["input"].shape)
     print(" output shape", trainning_data["output"].shape)

@@ -2,5 +2,5 @@ data/
 data_dm/
 results/
 temp/
-src/__pycache__
+*__pycache__
 .ai-imu-dr_bash_history
