@@ -10,7 +10,7 @@ class DmVelNet(torch.nn.Module):
         super(DmVelNet, self).__init__()
         self.device = device
         self.dropout = dropout
-        self.cov0_measurement = torch.Tensor([1.0, 1.0, 1.0]).double().to(self.device)
+        # self.cov0_measurement = torch.Tensor([1.0, 1.0, 1.0]).double().to(self.device)
 
         self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 32, 5),
                        torch.nn.ReplicationPad1d(4),
@@ -25,14 +25,14 @@ class DmVelNet(torch.nn.Module):
         self.cov_lin = torch.nn.Sequential(torch.nn.Linear(32, 3),
                                            torch.nn.Tanh(),
                                            ).double()
-        # self.cov_lin[0].bias.data[:] /= 100
-        # self.cov_lin[0].weight.data[:] /= 100
+        self.cov_lin[0].bias.data[:] /= 100
+        self.cov_lin[0].weight.data[:] /= 100
 
     def forward(self, u):
         y_cov = self.cov_net(u).transpose(0, 2).squeeze()
         z_cov = self.cov_lin(y_cov)
-        measurements_covs = (self.cov0_measurement.unsqueeze(0) * (10**z_cov))
-        return measurements_covs
+        # measurements_covs = (self.cov0_measurement.unsqueeze(0) * (10**z_cov))
+        return z_cov
 
     def load(self, model_path):
         cprint("  load IEKF from " + model_path, 'green')

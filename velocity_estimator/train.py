@@ -26,7 +26,7 @@ class TrainArgs():
 
     device = "cuda"
     epochs = 20000
-    save_every_epoch = 20
+    save_every_epoch = 100
     continue_training = False
 
     # for normalization of imu data
@@ -61,7 +61,14 @@ def prepare_data(args):
     trainning_data["output"] = torch.from_numpy(velocity_delta).to(args.device)
 
     # make weights for each sample
-    trainning_data["weights"] = torch.ones_like(trainning_data["output"]).to(args.device)
+    # trainning_data["weights"] = torch.ones_like(trainning_data["output"]).to(args.device)
+
+    # make weights for each sample
+    tmp = 20 * np.absolute(velocity_delta).sum(axis=1)
+    tmp[tmp > 1.0] = 1.0
+    tmp[tmp < 0.1] = 0.1
+    weights = np.array([tmp, tmp, tmp]).transpose()
+    trainning_data["weights"] = torch.from_numpy(weights).to(args.device)
 
     print(" input shape", trainning_data["input"].shape)
     print(" output shape", trainning_data["output"].shape)
