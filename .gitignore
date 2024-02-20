@@ -4,3 +4,4 @@ results/
 temp/
 *__pycache__
 .ai-imu-dr_bash_history
+*.png

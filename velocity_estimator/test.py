@@ -28,8 +28,14 @@ def plot_trajectory(velocity_delta, gyr_acc, dt = 1.0 / 100.0):
     # compute the trajectory based on the car velocity
     for i in range(gyr_acc.shape[0]):
         rotation = rotation.dot(NUMPYIEKF.so3exp(gyr_acc[i, 0:3] * dt))
+
+        # update car velocity
         velocity_car = velocity_car + velocity_delta[i]
+
+        # update world position
         velocity_world = rotation.dot(velocity_car)
+        velocity_world[2] = 0
+
         position = position + velocity_world * dt
         trajectory.append(position)
 
