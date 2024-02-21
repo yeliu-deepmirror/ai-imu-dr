@@ -34,7 +34,7 @@ def plot_trajectory(velocity_delta, gyr_acc, dt = 1.0 / 100.0):
 
         # update world position
         velocity_world = rotation.dot(velocity_car)
-        velocity_world[2] = 0
+        # velocity_world[2] = 0
 
         position = position + velocity_world * dt
         trajectory.append(position)
@@ -81,17 +81,20 @@ cprint("Done")
 
 trajectory_estimate = plot_trajectory(measurements, trainning_data["gyr_acc"])
 
-velocity_xyz = trainning_data["car_vel"]
-velocity_delta = velocity_xyz[1:, :] - velocity_xyz[:-1, :]
-trajectory_gt = plot_trajectory(velocity_delta, trainning_data["gyr_acc"][1:])
+if trainning_data.get("car_vel") is not None:
+    velocity_xyz = trainning_data["car_vel"]
+    velocity_delta = velocity_xyz[1:, :] - velocity_xyz[:-1, :]
+    trajectory_gt = plot_trajectory(velocity_delta, trainning_data["gyr_acc"][1:])
 
-rescale = trajectory_range(trajectory_gt) / trajectory_range(trajectory_estimate)
-trajectory_estimate = rescale * trajectory_estimate
-cprint("rescale factor : " + str(rescale), 'yellow')
+    rescale = trajectory_range(trajectory_gt) / trajectory_range(trajectory_estimate)
+    if rescale > 10:
+        trajectory_estimate = rescale * trajectory_estimate
+        cprint("rescale factor : " + str(rescale), 'yellow')
 
 ax = plt.figure().add_subplot(projection='3d')
 ax.plot(trajectory_estimate[:, 0], trajectory_estimate[:, 1], trajectory_estimate[:, 2], label="estimate")
-ax.plot(trajectory_gt[:, 0], trajectory_gt[:, 1], trajectory_gt[:, 2], label="gt")
+if trainning_data.get("car_vel") is not None:
+    ax.plot(trajectory_gt[:, 0], trajectory_gt[:, 1], trajectory_gt[:, 2], label="gt")
 ax.legend()
 
 plt.show()
