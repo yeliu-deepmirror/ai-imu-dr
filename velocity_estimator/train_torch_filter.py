@@ -35,7 +35,7 @@ def train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer):
 
     # compute loss
     output = meanet.forward(trainning_data["input"])
-    loss_train_tensor = criterion_mse(output, trainning_data["output"]) * trainning_data["weights"]
+    loss_train_tensor = criterion_l1(output, trainning_data["output"]) * trainning_data["weights"]
     loss_train = loss_train_tensor.sum()
     # cprint("  - loss_train: {:.5f}".format(loss_train))
 

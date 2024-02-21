@@ -25,7 +25,7 @@ class TrainArgs():
     plot_path = "/ai-imu-dr/temp/dmvelnet_train.png"
 
     device = "cuda"
-    epochs = 7000
+    epochs = 20000
     save_every_epoch = 100
     continue_training = False
     constant_weight = False
