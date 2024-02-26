@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(0, '..')
+
 import os
 import shutil
 import numpy as np
@@ -9,8 +12,10 @@ import torch
 import matplotlib.pyplot as plt
 from termcolor import cprint
 from model import DmVelNet
-from train_torch_filter import set_mes_net_optimizer, train_mes_net_loop
+from train_torch_filter import set_mes_net_optimizer, train_mes_net_loop, imu_mean, imu_std
 from argparse import ArgumentParser, Namespace
+from torchsummary import summary
+
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -26,13 +31,9 @@ class TrainArgs():
 
     device = "cuda"
     epochs = 20000
-    save_every_epoch = 100
+    save_every_epoch = 20
     continue_training = False
     constant_weight = False
-
-    # for normalization of imu data
-    imu_mean = np.array([0, 0, 0, 0, 0, 9.81], dtype=np.float64)
-    imu_std = np.array([0.1, 0.1, 0.1, 1.0, 1.0, 1.0], dtype=np.float64)
 
 
 def prepare_measurement_net(args):
@@ -53,7 +54,7 @@ def prepare_data(args):
     trainning_data = dict(np.load(args.training_data_path))
 
     # normalize imu data
-    imu_data_n = ((trainning_data[args.imu_data_name]-args.imu_mean)/args.imu_std)
+    imu_data_n = ((trainning_data[args.imu_data_name]-imu_mean)/imu_std)
     trainning_data["input"] = torch.from_numpy(imu_data_n[1:]).t().unsqueeze(0).to(args.device)
 
     # make output velocity cov maeaurement, y axis : front
@@ -65,9 +66,14 @@ def prepare_data(args):
     if args.constant_weight:
         trainning_data["weights"] = torch.ones_like(trainning_data["output"]).to(args.device)
     else:
-        tmp = 20 * np.absolute(velocity_delta).sum(axis=1)
-        tmp[tmp > 1.0] = 1.0
-        tmp[tmp < 0.1] = 0.1
+        tmp = 10000 * np.square(velocity_delta).sum(axis=1)
+        tmp[tmp > 1] = 1
+        tmp[tmp < 0.001] = 0.001
+
+        # plt.hist(tmp, 50, (0, 1))
+        # plt.title("weight histogram")
+        # plt.show()
+
         weights = np.array([tmp, tmp, tmp]).transpose()
         trainning_data["weights"] = torch.from_numpy(weights).to(args.device)
 
@@ -85,15 +91,25 @@ if __name__ == '__main__':
 
     cprint("Run Train ...", 'green')
     meanet = prepare_measurement_net(args)
-    save_measurement_net(args, meanet)
+
+    # summary(meanet, (6, 5))
+    summary(meanet, (6, 20))
+
+    # input = trainning_data["input"][:, :, 0:60]
+    # # print(input)
+    # print(meanet.forward(input)[40:, :])
+    # print(meanet.forward(input[:, :, 20:]))
+
+    # save_measurement_net(args, meanet)
     optimizer = set_mes_net_optimizer(meanet)
 
     losses = []
     g_norms = []
     for epoch in range(1, args.epochs + 1):
-        loss_train, g_norm = train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer)
+        loss_train, g_norm, std = train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer)
         if epoch%args.save_every_epoch == 0:
-            cprint('  Epoch {:2d} \tLoss: {:.5f}  Gradient Norm: {:.5f}'.format(epoch, loss_train, g_norm))
+            cprint('  Epoch {:2d} \tLoss: {:.2f}  Gradient Norm: {:.2f}'.format(epoch, loss_train, g_norm))
+            print("              \tSTD: ", std)
             save_measurement_net(args, meanet)
         losses.append(loss_train.detach().cpu().numpy())
         g_norms.append(g_norm.detach().cpu().numpy())

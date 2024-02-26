@@ -6,22 +6,22 @@ import time
 from termcolor import cprint
 
 class DmVelNet(torch.nn.Module):
-    def __init__(self, device, dropout = 0.7):
+    def __init__(self, device, dropout = 0.5, num_feature = 16):
         super(DmVelNet, self).__init__()
         self.device = device
         self.dropout = dropout
 
-        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 32, 5),
+        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, num_feature, 5),
                        torch.nn.ReplicationPad1d(4),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
-                       torch.nn.Conv1d(32, 32, 5, dilation=3),
+                       torch.nn.Conv1d(num_feature, num_feature, 5, dilation=3),
                        torch.nn.ReplicationPad1d(4),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
                        ).double()
         "CNN for measurement covariance"
-        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(32, 3),
+        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(num_feature, 3),
                                            torch.nn.Tanh(),
                                            ).double()
 
@@ -29,8 +29,15 @@ class DmVelNet(torch.nn.Module):
         self.cov_lin[0].bias.data[:] /= 100
         self.cov_lin[0].weight.data[:] /= 100
 
+    def cov_net_forward(self, x):
+        for layer in self.cov_net:
+            x = layer(x)
+            print(layer, x)
+        return x
+
     def forward(self, input):
-        output = self.cov_net(input).transpose(0, 2).squeeze()
+        output = self.cov_net(input)
+        output = output.transpose(0, 2).squeeze()
         output = self.cov_lin(output)
         return output
 
