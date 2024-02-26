@@ -6,7 +6,7 @@ import numpy as np
 from termcolor import cprint
 import copy
 
-max_grad_norm = 1e0
+max_grad_norm = 1e1
 criterion_mse = torch.nn.MSELoss(reduction="sum")
 criterion_l1 = torch.nn.L1Loss(reduction="none")
 
@@ -19,13 +19,15 @@ weight_decay_dmmesnet = {'cov_net': 1e-4,
 
 
 def set_mes_net_optimizer(mes_net):
-    param_list = []
-    for key, value in lr_mesnet.items():
-        param_list.append({'params': getattr(mes_net, key).parameters(),
-                           'lr': value,
-                           'weight_decay': weight_decay_dmmesnet[key]
-                           })
-    optimizer = torch.optim.Adam(param_list)
+    # param_list = []
+    # for key, value in lr_mesnet.items():
+    #     param_list.append({'params': getattr(mes_net, key).parameters(),
+    #                        'lr': value,
+    #                        'weight_decay': weight_decay_dmmesnet[key]
+    #                        })
+    # optimizer = torch.optim.Adam(param_list)
+
+    optimizer = torch.optim.SGD(mes_net.parameters(), lr=0.01, momentum=0.9)
     return optimizer
 
 
@@ -35,7 +37,14 @@ def train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer):
 
     # compute loss
     output = meanet.forward(trainning_data["input"])
-    loss_train_tensor = criterion_l1(output, trainning_data["output"]) * trainning_data["weights"]
+
+    # compute the covariance of the output
+    std_output = torch.std(output, dim=0)
+    # print(std_output)
+
+
+
+    loss_train_tensor = criterion_mse(output, trainning_data["output"]) * trainning_data["weights"]
     loss_train = loss_train_tensor.sum()
     # cprint("  - loss_train: {:.5f}".format(loss_train))
 
@@ -48,4 +57,4 @@ def train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer):
     optimizer.zero_grad()
     # cprint("  - gradient norm: {:.5f}".format(g_norm))
     # cprint('  Final Loss of Epoch {:2d} \tLoss: {:.5f}'.format(epoch, loss_train))
-    return loss_train, g_norm
+    return loss_train, g_norm, std_output

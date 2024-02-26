@@ -11,17 +11,17 @@ class DmVelNet(torch.nn.Module):
         self.device = device
         self.dropout = dropout
 
-        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 32, 5),
+        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 16, 5),
                        torch.nn.ReplicationPad1d(4),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
-                       torch.nn.Conv1d(32, 32, 5, dilation=3),
+                       torch.nn.Conv1d(16, 16, 5, dilation=3),
                        torch.nn.ReplicationPad1d(4),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
                        ).double()
         "CNN for measurement covariance"
-        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(32, 3),
+        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(16, 3),
                                            torch.nn.Tanh(),
                                            ).double()
 

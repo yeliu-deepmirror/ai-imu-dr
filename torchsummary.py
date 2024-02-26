@@ -67,8 +67,9 @@ def summary_string(model, input_size, batch_size=-1, device=torch.device('cuda:0
     model.apply(register_hook)
 
     # make a forward pass
-    # print(x.shape)
-    model(*x)
+    # print(x[0].shape)
+    y = model(*x)
+    # print(y.shape)
 
     # remove these hooks
     for h in hooks:

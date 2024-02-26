@@ -32,6 +32,10 @@ def plot_trajectory(velocity_delta, gyr_acc, dt = 1.0 / 100.0):
         # update car velocity
         velocity_car = velocity_car + velocity_delta[i]
 
+        # keep only front velocity
+        # velocity_car[0] = 0
+        # velocity_car[2] = 0
+
         # update world position
         velocity_world = rotation.dot(velocity_car)
         # velocity_world[2] = 0
@@ -49,14 +53,14 @@ def trajectory_range(trajectory):
 cprint("prepare model")
 class TestArgs():
     device = "cuda"
-    training_data_path = "/ai-imu-dr/data_dm/ai_imu_trainning_data_1.npz"
+    training_data_path = "/ai-imu-dr/data_dm/ai_imu_trainning_data_test_phone.npz"
     save_path = "/ai-imu-dr/data_dm/ai_imu_measurement.npy"
     model_path = "/ai-imu-dr/temp/dmvelnet.p"
     imu_mean = np.array([0, 0, 0, 0, 0, 9.81], dtype=np.float64)
     imu_std = np.array([0.1, 0.1, 0.1, 1.0, 1.0, 1.0], dtype=np.float64)
 
 args = TestArgs()
-torch_meanet = DmVelNet(args.device)
+torch_meanet = DmVelNet(args.device, 1.0)
 torch_meanet.load(args.model_path)
 if args.device == "cuda":
     torch_meanet.cuda()
@@ -73,6 +77,7 @@ measurements = torch_meanet.forward(imu_data)
 measurements = measurements.detach().cpu().numpy()
 
 cprint("result " + str(measurements.shape))
+# print(measurements)
 
 with open(args.save_path, 'wb') as f:
     np.save(f, measurements)
