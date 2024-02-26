@@ -9,16 +9,17 @@ import copy
 max_grad_norm = 1e1
 criterion_mse = torch.nn.MSELoss(reduction="sum")
 criterion_l1 = torch.nn.L1Loss(reduction="none")
-
-lr_mesnet = {'cov_net': 1e-4,
-    'cov_lin': 1e-4,
-    }
-weight_decay_dmmesnet = {'cov_net': 1e-4,
-    'cov_lin': 1e-4,
-    }
+imu_mean = np.array([0, 0, 0, 0, 0, 9.81], dtype=np.float64)
+imu_std = np.array([0.01, 0.01, 0.07, 0.5, 0.5, 0.5], dtype=np.float64)
 
 
 def set_mes_net_optimizer(mes_net):
+    # lr_mesnet = {'cov_net': 1e-4,
+    #     'cov_lin': 1e-4,
+    #     }
+    # weight_decay_dmmesnet = {'cov_net': 1e-4,
+    #     'cov_lin': 1e-4,
+    #     }
     # param_list = []
     # for key, value in lr_mesnet.items():
     #     param_list.append({'params': getattr(mes_net, key).parameters(),
@@ -39,10 +40,8 @@ def train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer):
     output = meanet.forward(trainning_data["input"])
 
     # compute the covariance of the output
-    std_output = torch.std(output, dim=0)
+    std_output = torch.std(output, dim=0).to('cpu').detach().numpy()
     # print(std_output)
-
-
 
     loss_train_tensor = criterion_mse(output, trainning_data["output"]) * trainning_data["weights"]
     loss_train = loss_train_tensor.sum()

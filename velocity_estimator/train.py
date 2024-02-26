@@ -12,7 +12,7 @@ import torch
 import matplotlib.pyplot as plt
 from termcolor import cprint
 from model import DmVelNet
-from train_torch_filter import set_mes_net_optimizer, train_mes_net_loop
+from train_torch_filter import set_mes_net_optimizer, train_mes_net_loop, imu_mean, imu_std
 from argparse import ArgumentParser, Namespace
 from torchsummary import summary
 
@@ -35,13 +35,9 @@ class TrainArgs():
     continue_training = False
     constant_weight = False
 
-    # for normalization of imu data
-    imu_mean = np.array([0, 0, 0, 0, 0, 9.81], dtype=np.float64)
-    imu_std = np.array([0.1, 0.1, 0.1, 1.0, 1.0, 1.0], dtype=np.float64)
-
 
 def prepare_measurement_net(args):
-    torch_meanet = DmVelNet(args.device)
+    torch_meanet = DmVelNet(args.device, 0.6)
     if args.continue_training:
         torch_meanet.load(args.model_path)
     if args.device == "cuda":
@@ -58,7 +54,7 @@ def prepare_data(args):
     trainning_data = dict(np.load(args.training_data_path))
 
     # normalize imu data
-    imu_data_n = ((trainning_data[args.imu_data_name]-args.imu_mean)/args.imu_std)
+    imu_data_n = ((trainning_data[args.imu_data_name]-imu_mean)/imu_std)
     trainning_data["input"] = torch.from_numpy(imu_data_n[1:]).t().unsqueeze(0).to(args.device)
 
     # make output velocity cov maeaurement, y axis : front
@@ -113,7 +109,7 @@ if __name__ == '__main__':
         loss_train, g_norm, std = train_mes_net_loop(args, trainning_data, epoch, meanet, optimizer)
         if epoch%args.save_every_epoch == 0:
             cprint('  Epoch {:2d} \tLoss: {:.2f}  Gradient Norm: {:.2f}'.format(epoch, loss_train, g_norm))
-            print("     STD: ", std)
+            print("              \tSTD: ", std)
             save_measurement_net(args, meanet)
         losses.append(loss_train.detach().cpu().numpy())
         g_norms.append(g_norm.detach().cpu().numpy())

@@ -29,8 +29,15 @@ class DmVelNet(torch.nn.Module):
         self.cov_lin[0].bias.data[:] /= 100
         self.cov_lin[0].weight.data[:] /= 100
 
+    def cov_net_forward(self, x):
+        for layer in self.cov_net:
+            x = layer(x)
+            print(layer, x)
+        return x
+
     def forward(self, input):
-        output = self.cov_net(input).transpose(0, 2).squeeze()
+        output = self.cov_net(input)
+        output = output.transpose(0, 2).squeeze()
         output = self.cov_lin(output)
         return output
 
