@@ -37,7 +37,7 @@ class TrainArgs():
 
 
 def prepare_measurement_net(args):
-    torch_meanet = DmVelNet(args.device, 0.6)
+    torch_meanet = DmVelNet(args.device)
     if args.continue_training:
         torch_meanet.load(args.model_path)
     if args.device == "cuda":

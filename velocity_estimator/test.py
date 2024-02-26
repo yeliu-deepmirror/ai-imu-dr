@@ -59,7 +59,8 @@ class TestArgs():
     model_path = "/ai-imu-dr/temp/dmvelnet.p"
 
 args = TestArgs()
-torch_meanet = DmVelNet(args.device, 0.6)
+# smaller dropout rate when testing
+torch_meanet = DmVelNet(args.device, 0.1)
 torch_meanet.load(args.model_path)
 if args.device == "cuda":
     torch_meanet.cuda()

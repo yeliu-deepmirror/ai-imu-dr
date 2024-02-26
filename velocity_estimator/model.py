@@ -6,22 +6,22 @@ import time
 from termcolor import cprint
 
 class DmVelNet(torch.nn.Module):
-    def __init__(self, device, dropout = 0.7):
+    def __init__(self, device, dropout = 0.5, num_feature = 16):
         super(DmVelNet, self).__init__()
         self.device = device
         self.dropout = dropout
 
-        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, 16, 5),
+        self.cov_net = torch.nn.Sequential(torch.nn.Conv1d(6, num_feature, 5),
                        torch.nn.ReplicationPad1d(4),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
-                       torch.nn.Conv1d(16, 16, 5, dilation=3),
+                       torch.nn.Conv1d(num_feature, num_feature, 5, dilation=3),
                        torch.nn.ReplicationPad1d(4),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
                        ).double()
         "CNN for measurement covariance"
-        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(16, 3),
+        self.cov_lin = torch.nn.Sequential(torch.nn.Linear(num_feature, 3),
                                            torch.nn.Tanh(),
                                            ).double()
 

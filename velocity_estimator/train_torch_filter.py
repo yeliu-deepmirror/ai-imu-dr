@@ -10,7 +10,7 @@ max_grad_norm = 1e1
 criterion_mse = torch.nn.MSELoss(reduction="sum")
 criterion_l1 = torch.nn.L1Loss(reduction="none")
 imu_mean = np.array([0, 0, 0, 0, 0, 9.81], dtype=np.float64)
-imu_std = np.array([0.01, 0.01, 0.07, 0.5, 0.5, 0.5], dtype=np.float64)
+imu_std = np.array([0.1, 0.1, 0.1, 0.5, 0.5, 0.5], dtype=np.float64)
 
 
 def set_mes_net_optimizer(mes_net):
