@@ -4,6 +4,7 @@ sys.path.insert(0, '..')
 import os
 import shutil
 import numpy as np
+import math
 from collections import namedtuple
 import glob
 import time
@@ -42,13 +43,33 @@ def plot_trajectory(velocity_delta, gyr_acc, dt = 1.0 / 100.0):
         # velocity_world[2] = 0
 
         position = position + velocity_world * dt
-        trajectory.append(position)
+        trajectory.append([position[0], position[1], position[2], np.linalg.norm(velocity_delta[i])])
 
     return np.array(trajectory)
 
 
 def trajectory_range(trajectory):
     return (trajectory.max(axis=0) - trajectory.min(axis=0)).max()
+
+
+def plot_heatmap(trajectory, num_grid = 100):
+    min = trajectory.min(axis=0)[0:2]
+    max = trajectory.max(axis=0)[0:2]
+    max_range = (max - min).max()
+    interval = math.ceil(max_range / num_grid)
+
+    heatmap = np.zeros((num_grid, num_grid))
+    for i in range(trajectory.shape[0]):
+        x = int((trajectory[i, 0] - min[0]) / interval)
+        y = int((trajectory[i, 1] - min[1]) / interval)
+        heatmap[x, y] = trajectory[i, 3]
+
+    print(trajectory[:, 3].mean())
+    print(trajectory[:, 3].min())
+    print(trajectory[:, 3].max())
+
+    plt.imshow(heatmap, cmap='hot', interpolation='nearest')
+    plt.show()
 
 
 cprint("prepare model")
@@ -103,3 +124,5 @@ if trainning_data.get("car_vel") is not None:
 ax.legend()
 
 plt.show()
+
+plot_heatmap(trajectory_estimate)
