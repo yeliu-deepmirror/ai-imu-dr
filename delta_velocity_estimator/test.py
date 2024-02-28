@@ -64,10 +64,6 @@ def plot_heatmap(trajectory, num_grid = 100):
         y = int((trajectory[i, 1] - min[1]) / interval)
         heatmap[x, y] = trajectory[i, 3]
 
-    print(trajectory[:, 3].mean())
-    print(trajectory[:, 3].min())
-    print(trajectory[:, 3].max())
-
     plt.imshow(heatmap, cmap='hot', interpolation='nearest')
     plt.show()
 
@@ -81,7 +77,7 @@ class TestArgs():
 
 args = TestArgs()
 # smaller dropout rate when testing
-torch_meanet = DmVelNet(args.device, 0.1)
+torch_meanet = DmVelNet(args.device)
 torch_meanet.load(args.model_path)
 if args.device == "cuda":
     torch_meanet.cuda()
@@ -113,7 +109,7 @@ if trainning_data.get("car_vel") is not None:
     trajectory_gt = plot_trajectory(velocity_delta, trainning_data["gyr_acc"][1:])
 
     rescale = trajectory_range(trajectory_gt) / trajectory_range(trajectory_estimate)
-    if rescale > 10:
+    if rescale < 0.1:
         trajectory_estimate = rescale * trajectory_estimate
         cprint("rescale factor : " + str(rescale), 'yellow')
 
