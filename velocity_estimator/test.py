@@ -43,6 +43,10 @@ if __name__ == '__main__':
     parser.add_argument('--test_data_key', type=str, default="")
     parser.add_argument('--model_path', type=str, default="/ai-imu-dr/temp/dmvelnet.p")
     parser.add_argument('--device', type=str, default="cuda")
+
+    # model parameters
+    parser.add_argument('--block_size', type=int, default=50)
+
     args, _ = parser.parse_known_args()
 
     test_data_path = args.test_data_path
@@ -52,13 +56,14 @@ if __name__ == '__main__':
 
     log_every_n = 5000
     cprint("Prepare model ...", 'green')
-    torch_meanet = DmVelNet(args.device)
+    torch_meanet = DmVelNet(args.device, args.block_size)
     torch_meanet.load(args.model_path)
     if args.device == "cuda":
         torch_meanet.cuda()
+    torch_meanet.eval()
 
     cprint("Prepare data ...", 'green')
-    test_set = InsDataset(test_data_path, False)
+    test_set = InsDataset(test_data_path, False, args.block_size)
 
     trajectory = Trajectory()
     trajectory_gt = Trajectory()

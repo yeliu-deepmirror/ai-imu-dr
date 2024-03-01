@@ -21,11 +21,14 @@ class DmVelNet(torch.nn.Module):
                        torch.nn.Conv1d(num_feature, num_feature, 5, dilation=3),
                        torch.nn.ReLU(),
                        torch.nn.Dropout(p=self.dropout),
-                       ).double()
+                       )
         "CNN for measurement covariance"
         self.cov_lin = torch.nn.Sequential(torch.nn.Linear(num_linear_feature, num_linear_feature_half),
                                            torch.nn.Linear(num_linear_feature_half, 3),
-                                           ).double()
+                                           # torch.nn.Tanh(),
+                                           )
+        # self.normal_velocity = torch.Tensor([20.0, 20.0, 20.0]).to(self.device)
+
 
     def cov_net_forward(self, x):
         print(x.shape)
@@ -37,6 +40,7 @@ class DmVelNet(torch.nn.Module):
     def forward(self, input):
         output = self.cov_net(input)
         output = torch.flatten(output, 1)
+        # output = self.cov_lin(output) * self.normal_velocity
         output = self.cov_lin(output)
         return output
 
