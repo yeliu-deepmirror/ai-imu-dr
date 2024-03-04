@@ -41,7 +41,7 @@ if __name__ == '__main__':
     # trainning parameters
     parser.add_argument('--plot_path', type=str, default="/ai-imu-dr/temp/dmvelnet_train.png")
     parser.add_argument('--device', type=str, default="cuda")
-    parser.add_argument('--epochs', type=int, default=500)
+    parser.add_argument('--epochs', type=int, default=2000)
     parser.add_argument('--continue_training', type=bool, default=False)
     parser.add_argument('--save_every_epoch', type=int, default=100)
     parser.add_argument('--plot_every_epoch', type=int, default=20)

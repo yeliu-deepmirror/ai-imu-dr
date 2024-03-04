@@ -72,9 +72,6 @@ if __name__ == '__main__':
         input_data = test_set.get_test_item(i).to(args.device)
         velocity_n = torch_meanet(input_data).detach().cpu().numpy()
 
-        # set velocity for next model input
-        test_set.set_velocity(i, velocity_n)
-
         # compute the trajectory
         velocity = test_set.to_raw_velocity(velocity_n)
         gyr_acc = test_set.get_raw_gyr_acc(i)
@@ -83,6 +80,9 @@ if __name__ == '__main__':
         velocity_gt = test_set.get_raw_vel_gt(i)
         if velocity_gt is not None:
             trajectory_gt.push_data(gyr_acc, velocity_gt)
+
+        # set velocity for next model input
+        test_set.set_velocity(i, velocity_n)
 
         if i%log_every_n == 0:
             print(i, velocity)

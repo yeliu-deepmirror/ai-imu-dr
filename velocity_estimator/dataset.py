@@ -20,7 +20,7 @@ class InsDataset(torch.utils.data.Dataset):
 
         self.data_gyr_acc_ = (trainning_data[self.imu_data_name_].astype(np.float32) - self.imu_mean) / self.imu_std
         print(" load input shape", self.data_gyr_acc_.shape)
-        if trainning:
+        if self.trainning_:
             assert trainning_data.get(self.vel_data_name_) is not None
             self.data_velocity_xyz_ = (trainning_data[self.vel_data_name_].astype(np.float32) - self.vel_mean) / self.vel_std
             print(" load output shape", self.data_velocity_xyz_.shape)
@@ -28,13 +28,16 @@ class InsDataset(torch.utils.data.Dataset):
             self.data_velocity_xyz_ = (np.zeros((self.data_gyr_acc_.shape[0], 3)) - self.vel_mean) / self.vel_std
             if trainning_data.get(self.vel_data_name_) is not None:
                 self.data_velocity_xyz_gt_ = (trainning_data[self.vel_data_name_].astype(np.float32) - self.vel_mean) / self.vel_std
+
+                # set the initial values to be gt
+                self.data_velocity_xyz_[0:block_size, :] = self.data_velocity_xyz_gt_[0:block_size, :]
             else:
                 self.data_velocity_xyz_gt_ = None
 
         self.raw_size_ = self.data_velocity_xyz_.shape[0] - self.block_size_ - 1
         self.samples_ = np.arange(0, self.raw_size_).tolist()
 
-        if trainning and False:
+        if self.trainning_ and False:
             print(" resample the tranning set based on velocity change")
             velocity_delta = self.data_velocity_xyz_[1:, :] - self.data_velocity_xyz_[:-1, :]
             tmp = np.abs(velocity_delta).sum(axis=1)
